@@ -422,8 +422,10 @@ with tab2:
                 y=list(st_data['y']) + (list(fut['yhat']) if len(fut) > 0 else []),
                 mode='lines', name=kw))
         oggi_str = df_trend.index.max().strftime('%Y-%m-%d')
-        fig_all.add_vline(x=oggi_str, line_dash="dash", line_color="white",
-                          annotation=dict(text="Oggi", showarrow=False, yshift=10))
+        fig_all.add_shape(type="line", x0=oggi_str, x1=oggi_str, y0=0, y1=1,
+                          yref="paper", line=dict(dash="dash", color="white"))
+        fig_all.add_annotation(x=oggi_str, y=1, yref="paper", text="Oggi",
+                               showarrow=False, yshift=10)
         fig_all.update_layout(title='Confronto Trend + Previsioni', template='plotly_dark',
             hovermode='x unified', height=500)
         st.plotly_chart(fig_all, use_container_width=True)
