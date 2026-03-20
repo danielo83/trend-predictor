@@ -88,7 +88,7 @@ tf_map = {'3m': 'today 3-m', '12m': 'today 12-m', '5y': 'today 5-y'}
 tf = tf_map.get(timeframe, 'today 12-m')
 
 genai.configure(api_key=gemini_key)
-model_json = genai.GenerativeModel('gemini-2.0-flash',
+model_json = genai.GenerativeModel('gemini-3.1-flash-lite-preview',
     generation_config={'response_mime_type': 'application/json'})
 
 progress = st.progress(0, text="Inizializzazione...")
