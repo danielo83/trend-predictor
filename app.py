@@ -542,7 +542,109 @@ with tab5:
         'classifica': df_score.to_dict('records') if not df_score.empty else [],
         'strategia': strategia
     }
-    st.download_button("📥 Report completo (JSON)", 
+    st.download_button("📥 Report completo (JSON)",
         json.dumps(report, ensure_ascii=False, indent=2, default=str),
         file_name=f"report_{nicchia.replace(' ','_')}_{oggi}.json",
         mime="application/json")
+
+    # Report HTML
+    st.divider()
+    st.subheader("Report HTML interattivo")
+
+    html_parts = [f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Trend Report — {nicchia} — {oggi}</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+body{{font-family:system-ui,sans-serif;background:#111;color:#eee;margin:2rem auto;max-width:1200px;padding:0 1rem}}
+h1,h2,h3{{color:#00d1ff}}
+table{{border-collapse:collapse;width:100%;margin:1rem 0}}
+th,td{{border:1px solid #333;padding:8px 12px;text-align:left}}
+th{{background:#222;color:#00d1ff}}
+tr:nth-child(even){{background:#1a1a1a}}
+.badge{{padding:2px 8px;border-radius:4px;font-size:.85em;font-weight:600}}
+.EMERGENTE{{background:#ff4444;color:#fff}}.IN_CRESCITA{{background:#ff8800;color:#fff}}
+.STABILE{{background:#44aa44;color:#fff}}.IN_CALO{{background:#666;color:#ccc}}
+.section{{margin:2rem 0;padding:1rem;background:#1a1a1a;border-radius:8px}}
+</style></head><body>
+<h1>📊 Trend Report — {nicchia.upper()}</h1>
+<p>Data: {oggi} | Timeframe: {timeframe} | Keywords: {len(df_score)}</p>
+"""]
+
+    # Classifica table
+    if not df_score.empty:
+        html_parts.append('<div class="section"><h2>Classifica Keywords</h2><table>')
+        html_parts.append('<tr><th>#</th><th>Keyword</th><th>Score</th><th>Stato</th><th>Interesse medio</th><th>Interesse recente</th><th>Var %</th></tr>')
+        for i, row in df_score.head(30).iterrows():
+            cls = row.get('classif', '').replace(' ', '_')
+            html_parts.append(
+                f'<tr><td>{i+1}</td><td><b>{row["keyword"]}</b></td>'
+                f'<td>{row["score"]:.0f}</td>'
+                f'<td><span class="badge {cls}">{row.get("classif","")}</span></td>'
+                f'<td>{row.get("interesse_medio",0):.0f}</td>'
+                f'<td>{row.get("interesse_recente",0):.0f}</td>'
+                f'<td>{row.get("var_pct",0):+.1f}%</td></tr>')
+        html_parts.append('</table></div>')
+
+        # Bar chart
+        fig_html_bar = px.bar(df_score.head(20), x='score', y='keyword', orientation='h',
+            color='var_pct', color_continuous_scale='RdYlGn', title='Top 20 per Score')
+        fig_html_bar.update_layout(template='plotly_dark', height=550,
+            yaxis={'categoryorder': 'total ascending'}, margin=dict(l=200))
+        html_parts.append(f'<div class="section"><h2>Top 20 Score</h2>{fig_html_bar.to_html(full_html=False, include_plotlyjs=False)}</div>')
+
+    # Previsioni chart
+    if risultati_prophet:
+        fig_html_all = go.Figure()
+        for kw in list(risultati_prophet.keys())[:10]:
+            d = risultati_prophet[kw]
+            st_data = d['st']; fc = d['fc']; cut = st_data['ds'].max()
+            fut = fc[fc['ds'] > cut] if 'ds' in fc.columns else pd.DataFrame()
+            fig_html_all.add_trace(go.Scatter(
+                x=list(st_data['ds']) + (list(fut['ds']) if len(fut) > 0 else []),
+                y=list(st_data['y']) + (list(fut['yhat']) if len(fut) > 0 else []),
+                mode='lines', name=kw))
+        if not df_trend.empty:
+            oggi_s = df_trend.index.max().strftime('%Y-%m-%d')
+            fig_html_all.add_shape(type="line", x0=oggi_s, x1=oggi_s, y0=0, y1=1,
+                                   yref="paper", line=dict(dash="dash", color="white"))
+            fig_html_all.add_annotation(x=oggi_s, y=1, yref="paper", text="Oggi",
+                                        showarrow=False, yshift=10)
+        fig_html_all.update_layout(title='Confronto Trend + Previsioni', template='plotly_dark',
+            hovermode='x unified', height=500)
+        html_parts.append(f'<div class="section"><h2>Previsioni</h2>{fig_html_all.to_html(full_html=False, include_plotlyjs=False)}</div>')
+
+    # Rising queries
+    if rising_queries:
+        df_rq_html = pd.DataFrame(rising_queries).sort_values('value', ascending=False)
+        html_parts.append('<div class="section"><h2>Rising Queries</h2><table>')
+        html_parts.append('<tr><th>Query</th><th>Valore</th><th>Tipo</th><th>Origine</th></tr>')
+        for _, row in df_rq_html.head(30).iterrows():
+            html_parts.append(f'<tr><td>{row["query"]}</td><td>{row["value"]}</td><td>{row["tipo"]}</td><td>{row["origine"]}</td></tr>')
+        html_parts.append('</table></div>')
+
+    # Strategia
+    if strategia:
+        html_parts.append('<div class="section"><h2>Strategia AI</h2>')
+        if strategia.get('executive_summary'):
+            html_parts.append(f'<p><em>{strategia["executive_summary"]}</em></p>')
+        if strategia.get('opportunita'):
+            html_parts.append('<h3>Opportunità</h3><ul>')
+            for o in strategia['opportunita']:
+                html_parts.append(f'<li><b>[{o.get("priorita","")}] {o.get("keyword","")}</b> — {o.get("azione","")} <br><em>{o.get("titolo","")}</em></li>')
+            html_parts.append('</ul>')
+        if strategia.get('piano_editoriale'):
+            html_parts.append('<h3>Piano Editoriale</h3>')
+            for m in strategia['piano_editoriale']:
+                html_parts.append(f'<h4>📅 {m.get("mese","")} — {m.get("focus","")}</h4><ul>')
+                for c in m.get('contenuti', []):
+                    html_parts.append(f'<li>{c}</li>')
+                html_parts.append('</ul>')
+        html_parts.append('</div>')
+
+    html_parts.append('<footer style="text-align:center;color:#666;margin-top:3rem;padding:1rem">Generato da Trend Predictor Pro</footer></body></html>')
+    html_report = '\n'.join(html_parts)
+
+    st.download_button("📥 Report completo (HTML)", html_report,
+        file_name=f"report_{nicchia.replace(' ','_')}_{oggi}.html",
+        mime="text/html")
