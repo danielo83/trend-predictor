@@ -54,26 +54,47 @@ with st.sidebar:
     usa_prophet = st.checkbox("Usa Prophet ML", value=True, 
                                help="Disattiva se il server è lento")
     
-    avvia = st.button("🚀 Avvia Analisi", use_container_width=True, type="primary")
+    avvia_sidebar = st.button("🚀 Avvia Analisi", use_container_width=True, type="primary", key="avvia_sidebar")
+    if avvia_sidebar:
+        st.session_state['avvia'] = True
 
 # === MAIN ===
 st.title("📊 Ronia Trend Predictor")
 st.caption("Google Trends + AI • Analisi automatica • Previsioni ML • Strategia editoriale")
 
+avvia = st.session_state.get('avvia', False)
+
 if not avvia:
-    st.info("👈 Configura la nicchia nel pannello laterale e clicca **Avvia Analisi**")
-    
-    # Mostra esempio
-    with st.expander("📖 Come funziona"):
+    st.info("Configura la nicchia e clicca **Avvia Analisi**")
+
+    with st.expander("📖 Come funziona", expanded=True):
         st.markdown("""
-        1. **Scrivi una nicchia** — anche generica come "sogni" o "fitness"
-        2. **L'AI la espande** — Gemini genera 10-15 sotto-nicchie automaticamente
-        3. **Google Trends** — scarica dati reali di interesse per ogni keyword
-        4. **Analisi momentum** — calcola score, classificazione e trend
-        5. **Previsioni ML** — Prophet prevede i prossimi mesi
-        6. **Strategia AI** — piano editoriale generato da Gemini
+**Ronia Trend Predictor** analizza i trend di Google per qualsiasi nicchia e genera previsioni + strategia editoriale in automatico.
+
+**Il flusso in 6 step:**
+
+1. **Esplosione della nicchia** — Inserisci un argomento (es. "significato dei sogni"). Gemini AI lo scompone in 10-15 sotto-nicchie realistiche, tipiche delle ricerche Google italiane.
+
+2. **Generazione keyword** — Per ogni sotto-nicchia, Gemini genera 5 keyword brevi (2-3 parole) ottimizzate per Google Trends. Il sistema raccoglie 50-80 keyword candidate.
+
+3. **Scoperta rising queries** — Il sistema interroga Google Trends per ciascuna keyword seed, estraendo le ricerche in forte crescita (rising) e le top queries. Vengono aggiunte al pool da analizzare.
+
+4. **Scaricamento dati storici** — Tutte le keyword vengono inviate a Google Trends in batch (max 5 alla volta, con keyword "ancora" per normalizzare). Il risultato e una serie temporale di interesse nel periodo scelto.
+
+5. **Scoring e classificazione** — Ogni keyword riceve uno score calcolato su: interesse medio, interesse recente, variazione %, slope e accelerazione. Viene classificata come EMERGENTE, IN CRESCITA, STABILE o IN CALO.
+
+6. **Previsioni ML + Strategia AI** — Prophet (Meta) prevede l'andamento dei prossimi mesi. Gemini analizza tutto e genera una strategia editoriale completa con priorita e piano mese per mese.
         """)
+
+    st.divider()
+    col_start1, col_start2, col_start3 = st.columns([1, 2, 1])
+    with col_start2:
+        if st.button("🚀 Avvia Analisi", use_container_width=True, type="primary", key="avvia_main"):
+            st.session_state['avvia'] = True
+            st.rerun()
     st.stop()
+
+st.session_state['avvia'] = False  # reset per il prossimo ciclo
 
 if not gemini_key:
     st.error("Inserisci la Gemini API Key nel pannello laterale.")
@@ -94,7 +115,7 @@ model_json = genai.GenerativeModel('gemini-3.1-flash-lite-preview',
 progress = st.progress(0, text="Inizializzazione...")
 
 # --- PASSO 1: Esplosione nicchia ---
-progress.progress(5, text=f'🔍 Esplosione nicchia "{nicchia}"...')
+progress.progress(5, text=f'🔍 Step 1/6 — Esplosione nicchia "{nicchia}" con Gemini AI...')
 
 prompt1 = (
     f'Sei un esperto SEO italiano. Nicchia: "{nicchia}".\n'
@@ -114,7 +135,7 @@ with st.expander(f"📂 {len(sotto_nicchie)} sotto-nicchie trovate", expanded=Fa
         st.write(f"{i}. {sn}")
 
 # --- PASSO 2: Keyword ---
-progress.progress(15, text='🔑 Generazione keyword...')
+progress.progress(15, text=f'🔑 Step 2/6 — Generazione keyword per {len(sotto_nicchie)} sotto-nicchie...')
 
 all_seed_kws = [sn for sn in sotto_nicchie if len(sn.split()) <= 3]
 
@@ -156,7 +177,7 @@ def fetch_trends(keywords):
     return False
 
 # --- DISCOVERY ---
-progress.progress(30, text='🔎 Scoperta rising queries...')
+progress.progress(30, text=f'🔎 Step 3/6 — Scoperta rising queries da Google Trends ({len(all_seed_kws)} keyword seed)...')
 rising_queries = []
 query_viste = set()
 
@@ -191,7 +212,7 @@ anchor = tutte_le_kw[0]
 altre = tutte_le_kw[1:]
 dfs = []
 
-progress.progress(40, text=f'📊 Scaricamento dati ({len(tutte_le_kw)} keyword)...')
+progress.progress(40, text=f'📊 Step 4/6 — Scaricamento serie temporali per {len(tutte_le_kw)} keyword...')
 
 if fetch_trends([anchor]):
     try:
@@ -208,7 +229,7 @@ for i in range(0, len(altre), 4):
     batch = [anchor] + altre[i:i+4]
     batch_num = i // 4 + 1
     pct = 40 + int(30 * batch_num / max(total_batches, 1))
-    progress.progress(min(pct, 70), text=f'📊 Batch {batch_num}/{total_batches}...')
+    progress.progress(min(pct, 70), text=f'📊 Step 4/6 — Scaricamento batch {batch_num}/{total_batches} da Google Trends...')
     if not fetch_trends(batch):
         continue
     try:
@@ -239,7 +260,7 @@ if df_trend.empty:
     st.stop()
 
 # --- MOMENTUM + SCORE ---
-progress.progress(75, text='📐 Calcolo score e classificazione...')
+progress.progress(75, text=f'📐 Step 5/6 — Calcolo score, momentum e classificazione per {len(df_trend.columns)} keyword...')
 
 def momentum(serie):
     s = serie.astype(float)
@@ -283,7 +304,7 @@ df_score = pd.DataFrame(rows).sort_values('score', ascending=False) if rows else
 risultati_prophet = {}
 
 if usa_prophet and not df_score.empty:
-    progress.progress(80, text='🤖 Previsioni ML...')
+    progress.progress(80, text=f'🤖 Step 5/6 — Previsioni ML con Prophet per le top {top_n} keyword...')
     
     try:
         from prophet import Prophet
@@ -334,7 +355,7 @@ if usa_prophet and not df_score.empty:
             pass
 
 # --- STRATEGIA ---
-progress.progress(90, text='🎯 Generazione strategia AI...')
+progress.progress(90, text='🎯 Step 6/6 — Generazione strategia editoriale con Gemini AI...')
 strategia = None
 
 if not df_score.empty:
@@ -358,7 +379,7 @@ if not df_score.empty:
     except Exception:
         pass
 
-progress.progress(100, text='✅ Completato!')
+progress.progress(100, text='✅ Analisi completata! Esplora i risultati nelle tab qui sotto.')
 time.sleep(0.5)
 progress.empty()
 
