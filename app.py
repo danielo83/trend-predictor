@@ -1,4 +1,4 @@
-"""Trend Predictor Pro — Streamlit App."""
+"""Ronia Trend Predictor — Streamlit App."""
 import streamlit as st
 import os, time, json, warnings, random
 from datetime import date
@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 
 # === PAGE CONFIG ===
 st.set_page_config(
-    page_title="Trend Predictor Pro",
+    page_title="Ronia Trend Predictor",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -57,7 +57,7 @@ with st.sidebar:
     avvia = st.button("🚀 Avvia Analisi", use_container_width=True, type="primary")
 
 # === MAIN ===
-st.title("📊 Trend Predictor Pro")
+st.title("📊 Ronia Trend Predictor")
 st.caption("Google Trends + AI • Analisi automatica • Previsioni ML • Strategia editoriale")
 
 if not avvia:
@@ -642,7 +642,7 @@ tr:nth-child(even){{background:#1a1a1a}}
                 html_parts.append('</ul>')
         html_parts.append('</div>')
 
-    html_parts.append('<footer style="text-align:center;color:#666;margin-top:3rem;padding:1rem">Generato da Trend Predictor Pro</footer></body></html>')
+    html_parts.append('<footer style="text-align:center;color:#666;margin-top:3rem;padding:1rem">Generato da Ronia Trend Predictor</footer></body></html>')
     html_report = '\n'.join(html_parts)
 
     st.download_button("📥 Report completo (HTML)", html_report,

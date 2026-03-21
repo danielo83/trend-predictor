@@ -1,4 +1,4 @@
-"""Telegram Bot — Trend Predictor Pro."""
+"""Telegram Bot — Ronia Trend Predictor."""
 import os
 import json
 import logging
@@ -26,7 +26,7 @@ NICHE = 0
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📊 *Trend Predictor Pro*\n\n"
+        "📊 *Ronia Trend Predictor*\n\n"
         "Comandi:\n"
         "/analizza — avvia analisi completa\n"
         "/quick `<nicchia>` — analisi veloce\n"
