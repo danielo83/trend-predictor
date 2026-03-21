@@ -1,4 +1,4 @@
-# Trend Predictor Pro — Streamlit App
+# Ronia Trend Predictor — Streamlit App
 
 Analisi trend automatica: Google Trends + Gemini AI + Prophet ML.
 
